@@ -9,6 +9,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 GTFS_ZIP="$DIR/GTFS_Data.zip"
 GTFS_DIR="$DIR/GTFS_Data"
 PB_FILE="$DIR/tripUpdates.pb"
+VP_FILE="$DIR/vehiclePositions.pb"
 
 # ── 1. GTFS estático ──────────────────────────────────────────────────────────
 echo "📥 Descargando GTFS estático (google_transit.zip) …"
@@ -33,11 +34,18 @@ echo "📡 Descargando tripUpdates.pb (tiempo real) …"
 curl -L --progress-bar \
     "https://www.vitoria-gasteiz.org/we001/http/vgTransit/realTime/tripUpdates.pb" \
     -o "$PB_FILE"
-echo "   ✔ Guardado en: $PB_FILE ($(wc -c < "$PB_FILE" | tr -d ' ') bytes)"
+echo "   ✔ Guardado en: $PB_FILE ($(wc -c <"$PB_FILE" | tr -d ' ') bytes)"
+
+# ── 4. Posiciones de vehículos ────────────────────────────────────────────────
+echo "📡 Descargando vehiclePositions.pb (tiempo real) …"
+curl -L --progress-bar \
+    "https://www.vitoria-gasteiz.org/we001/http/vgTransit/realTime/vehiclePositions.pb" \
+    -o "$VP_FILE"
+echo "   ✔ Guardado en: $VP_FILE ($(wc -c <"$VP_FILE" | tr -d ' ') bytes)"
 
 # ── Resumen ───────────────────────────────────────────────────────────────────
 echo ""
 echo "✅ Descarga completada — $(date '+%Y-%m-%d %H:%M:%S')"
-echo "   GTFS estático  → $GTFS_DIR"
-echo "   Tiempo real    → $PB_FILE"
-
+echo "   GTFS estático        → $GTFS_DIR"
+echo "   Actualizaciones RT   → $PB_FILE"
+echo "   Posiciones vehículos → $VP_FILE"

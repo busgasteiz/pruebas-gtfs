@@ -83,3 +83,5 @@ GTFS_Data/
 tripUpdates.pb
 
 TripUpdatesReader/tripUpdatesReader
+
+vehiclePositions.pb

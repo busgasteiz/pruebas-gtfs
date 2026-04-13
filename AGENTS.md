@@ -61,10 +61,11 @@ Todos se ejecutan desde `pruebas-gtfs`:
 
 ## Fuentes de datos
 
-| Recurso            | URL                                                                            |
-|--------------------|--------------------------------------------------------------------------------|
-| GTFS estático      | `https://www.vitoria-gasteiz.org/we001/http/vgTransit/google_transit.zip`      |
-| Feed RT (protobuf) | `https://www.vitoria-gasteiz.org/we001/http/vgTransit/realTime/tripUpdates.pb` |
+| Recurso                     | URL                                                                                 |
+|-----------------------------|-------------------------------------------------------------------------------------|
+| GTFS estático               | `https://www.vitoria-gasteiz.org/we001/http/vgTransit/google_transit.zip`           |
+| Feed RT — trip updates      | `https://www.vitoria-gasteiz.org/we001/http/vgTransit/realTime/tripUpdates.pb`      |
+| Feed RT — vehicle positions | `https://www.vitoria-gasteiz.org/we001/http/vgTransit/realTime/vehiclePositions.pb` |
 
 El feed RT se actualiza con frecuencia (cada ~30 s). El GTFS estático cambia
 con menor frecuencia (cambios de servicio estacionales).
