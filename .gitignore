@@ -75,3 +75,9 @@ Temporary Items
 .apdisk
 .idea/
 .env
+
+GTFS_Data.zip
+
+GTFS_Data/
+
+tripUpdates.pb
