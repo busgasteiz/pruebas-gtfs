@@ -1,14 +1,3 @@
 # pruebas-gtfs
 
-```
- _________________________________
-/ Kissing don't last, cookery do. \
-|                                 |
-\ -- George Meredith              /
- ---------------------------------
-        \   ^__^
-         \  (oo)\_______
-            (__)\       )\/\
-                ||----w |
-                ||     ||
-```
+Prueba de procesado de datos GTFS.
