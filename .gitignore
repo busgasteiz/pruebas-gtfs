@@ -81,3 +81,5 @@ GTFS_Data.zip
 GTFS_Data/
 
 tripUpdates.pb
+
+TripUpdatesReader/tripUpdatesReader
