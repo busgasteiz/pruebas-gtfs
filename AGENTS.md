@@ -38,8 +38,10 @@ pruebas-gtfs
 ├── vehiclePositions.pb             # Feed RT de posiciones GPS (generado por download_data.sh)
 └── TripUpdatesReader/
     ├── main.swift                  # Programa principal (único fichero fuente)
+    ├── nearby_buses.swift          # Paradas cercanas + próximas llegadas
     ├── tripUpdatesReader           # Binario compilado (generado por make build)
     ├── inspect.py                  # Utilidad de depuración: tripUpdates.pb
+    ├── inspect_tu.py               # Utilidad de depuración: tripUpdates.pb (mejorada)
     └── inspect_vp.py               # Utilidad de depuración: vehiclePositions.pb
 ```
 
@@ -52,12 +54,15 @@ Todos se ejecutan desde `pruebas-gtfs`:
 | Comando         | Acción                                             |
 |-----------------|----------------------------------------------------|
 | `make`          | Muestra la ayuda (acción predeterminada)           |
-| `make download` | Descarga `GTFS_Data/` y `tripUpdates.pb`           |
-| `make run`      | Interpreta `main.swift` con Swift (sin compilar)   |
-| `make build`    | Compila `main.swift` → binario `tripUpdatesReader` |
-| `make run-bin`  | Compila si hace falta y ejecuta el binario         |
-| `make refresh`  | `download` + `run`                                 |
-| `make clean`    | Elimina el binario compilado                       |
+| `make download`      | Descarga `GTFS_Data/` y `tripUpdates.pb`           |
+| `make run`           | Interpreta `main.swift` con Swift (sin compilar)   |
+| `make build`         | Compila `main.swift` → binario `tripUpdatesReader` |
+| `make run-bin`       | Compila si hace falta y ejecuta el binario         |
+| `make nearby`        | Paradas cercanas + próximas llegadas (sin compilar)|
+| `make build-nearby`  | Compila `nearby_buses.swift` → binario             |
+| `make run-nearby`    | Compila si hace falta y ejecuta `nearby_buses`     |
+| `make refresh`       | `download` + `run`                                 |
+| `make clean`         | Elimina los binarios compilados                    |
 
 ---
 
@@ -114,6 +119,57 @@ Las horas GTFS se expresan como segundos desde medianoche en la zona horaria
 ### 7 · Main
 
 Carga secuencial: GTFS estático → feed RT → impresión enriquecida por entidad.
+
+---
+
+## Arquitectura de `nearby_buses.swift`
+
+Programa independiente (sin SPM, sin dependencias externas) que muestra las
+paradas cercanas a unas coordenadas y los autobuses previstos en los próximos
+minutos.
+
+### Uso
+
+```bash
+swift TripUpdatesReader/nearby_buses.swift [lat] [lon] [radio_m] [ventana_min] [pb_path] [gtfs_folder]
+# Valores predeterminados: 42.855107  -2.666295  500  30  ./tripUpdates.pb  ./GTFS_Data
+```
+
+O con los targets del Makefile:
+
+```bash
+make nearby        # sin compilar (más lento, cómodo para pruebas rápidas)
+make run-nearby    # compilado   (recomendado en uso habitual)
+```
+
+### Flujo de datos
+
+1. **Carga GTFS**: routes, trips (con `service_id`), stops, `calendar_dates`,
+   `stop_times` indexado por `stop_id`.
+2. **Índice `activeDates`**: `date (yyyyMMdd) → Set<service_id>` construido
+   desde `calendar_dates.txt` (sólo `exception_type=1`).
+3. **Carga TripUpdates RT**: construye `[tripId: TripDelayInfo]` con retraso
+   por parada y etiqueta del vehículo.
+4. **Filtrado geográfico**: distancia Haversine; paradas dentro del radio
+   ordenadas de menor a mayor distancia.
+5. **Resolución de fecha de servicio** (`resolveServiceDate`): para cada
+   horario de parada, prueba primero con la fecha de hoy y después con ayer
+   (para servicios nocturnos con `arrivalSecs > 86400`). Valida que el
+   `service_id` esté activo en esa fecha según `activeDates`.
+6. **Aplicación del retraso**: `predictedTime = scheduledTime + delay`,
+   donde el delay se busca por `stopId` y, si no existe, por viaje.
+7. **Presentación**: paradas en orden de distancia; dentro de cada parada,
+   llegadas en orden cronológico.
+
+### Particularidad del trip_id en Tuvisa
+
+La mayoría de los viajes usan el formato `L{ruta}S{var}_{num}-{svctype}`
+(ej.: `L10S1_055-LAB`), que coincide **directamente** con el `trip_id` del
+feed RT. No se necesita ningún mapeo adicional.
+
+Los 53 viajes con `service_id=UNDEFINED` usan el formato
+`{ruta}_{dir}_{var}_{fecha}T{hora}_{hash}` y **no aparecen** en los feeds RT;
+se incluyen si su horario cae en la ventana temporal.
 
 ---
 

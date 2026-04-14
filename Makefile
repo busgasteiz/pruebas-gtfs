@@ -3,11 +3,13 @@
 # Uso: make <target>   (ejecutar desde ~/Downloads)
 # ──────────────────────────────────────────────────────────────────────────────
 
-SWIFT_SRC    = TripUpdatesReader/main.swift
-BINARY       = TripUpdatesReader/tripUpdatesReader
-DOWNLOAD_SH  = ./download_data.sh
+SWIFT_SRC       = TripUpdatesReader/main.swift
+BINARY          = TripUpdatesReader/tripUpdatesReader
+NEARBY_SRC      = TripUpdatesReader/nearby_buses.swift
+NEARBY_BIN      = TripUpdatesReader/nearby_buses
+DOWNLOAD_SH     = ./download_data.sh
 
-.PHONY: all download run build run-bin refresh clean help
+.PHONY: all download run build run-bin refresh clean help nearby build-nearby run-nearby
 
 ## Muestra la ayuda (acción predeterminada)
 .DEFAULT_GOAL := help
@@ -40,19 +42,38 @@ refresh: download run
 
 ## Elimina el binario compilado
 clean:
-	@rm -f $(BINARY)
-	@echo "🗑  Binario eliminado"
+	@rm -f $(BINARY) $(NEARBY_BIN)
+	@echo "🗑  Binarios eliminados"
+
+## Interpreta nearby_buses.swift (paradas cercanas + próximas llegadas)
+nearby:
+	@swift $(NEARBY_SRC)
+
+## Compila nearby_buses.swift en binario nativo
+build-nearby: $(NEARBY_BIN)
+
+$(NEARBY_BIN): $(NEARBY_SRC)
+	@echo "🔨 Compilando $(NEARBY_SRC) …"
+	@swiftc $(NEARBY_SRC) -O -o $(NEARBY_BIN)
+	@echo "   ✔ Binario: $(NEARBY_BIN)"
+
+## Compila si hace falta y ejecuta nearby_buses (mucho más rápido que 'nearby')
+run-nearby: $(NEARBY_BIN)
+	@$(NEARBY_BIN)
 
 ## Muestra esta ayuda
 help:
 	@echo ""
 	@echo "Targets disponibles:"
-	@echo "  make download   Descarga GTFS estático y tripUpdates.pb"
-	@echo "  make run        Lee tripUpdates.pb con el intérprete Swift"
-	@echo "  make build      Compila el lector Swift en un binario nativo"
-	@echo "  make run-bin    Compila si es necesario y ejecuta el binario"
-	@echo "  make refresh    download + run  (datos frescos + lectura)"
-	@echo "  make all        download + run  (igual que refresh)"
-	@echo "  make clean      Elimina el binario compilado"
+	@echo "  make download      Descarga GTFS estático y tripUpdates.pb"
+	@echo "  make run           Lee tripUpdates.pb con el intérprete Swift"
+	@echo "  make build         Compila el lector Swift en un binario nativo"
+	@echo "  make run-bin       Compila si es necesario y ejecuta el binario"
+	@echo "  make refresh       download + run  (datos frescos + lectura)"
+	@echo "  make all           download + run  (igual que refresh)"
+	@echo "  make nearby        Muestra paradas cercanas y próximas llegadas (sin compilar)"
+	@echo "  make build-nearby  Compila nearby_buses.swift en binario nativo"
+	@echo "  make run-nearby    Compila si hace falta y ejecuta nearby_buses"
+	@echo "  make clean         Elimina los binarios compilados"
 	@echo ""
 
