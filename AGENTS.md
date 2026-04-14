@@ -19,8 +19,8 @@ retraso actual.
 ```
 pruebas-gtfs
 ├── Makefile                        # Punto de entrada principal (make help)
-├── download_data.sh                # Descarga GTFS estático y feed RT
-├── GTFS_Data/                      # Datos GTFS estáticos (generados por download_data.sh)
+├── download_data.sh                # Descarga GTFS estático y feeds RT de Tuvisa y Euskotren
+├── GTFS_Data/                      # Datos GTFS estáticos Tuvisa (generados por download_data.sh)
 │   ├── agency.txt
 │   ├── routes.txt
 │   ├── trips.txt
@@ -33,15 +33,26 @@ pruebas-gtfs
 │   ├── shapes.txt
 │   ├── translations.txt
 │   └── attributions.txt
-├── GTFS_Data.zip                   # ZIP descargado (no editar manualmente)
-├── tripUpdates.pb                  # Feed RT binario (generado por download_data.sh)
-├── vehiclePositions.pb             # Feed RT de posiciones GPS (generado por download_data.sh)
+├── Euskotren_Data/                 # Datos GTFS estáticos Euskotren (generados por download_data.sh)
+│   ├── agency.txt
+│   ├── routes.txt                  # Contiene todas las líneas; filtrar a agency_id=EUS_TrGa para el tranvía
+│   ├── trips.txt
+│   ├── stops.txt                   # Incluye StopPlace (location_type=1) y Quays (location_type=0)
+│   ├── stop_times.txt
+│   ├── calendar.txt                # Horario semanal (a diferencia de Tuvisa, que usa calendar_dates.txt)
+│   ├── calendar_dates.txt          # Excepciones al calendar.txt
+│   └── …
+├── GTFS_Data.zip                   # ZIP Tuvisa descargado (no editar manualmente)
+├── Euskotren_Data.zip              # ZIP Euskotren descargado (no editar manualmente)
+├── tripUpdates.pb                  # Feed RT binario Tuvisa (generado por download_data.sh)
+├── vehiclePositions.pb             # Feed RT de posiciones GPS Tuvisa (generado por download_data.sh)
+├── euskotrenTripUpdates.pb         # Feed RT binario Euskotren (generado por download_data.sh)
 └── TripUpdatesReader/
     ├── main.swift                  # Programa principal (único fichero fuente)
     ├── nearby_buses.swift          # Paradas cercanas + próximas llegadas
     ├── tripUpdatesReader           # Binario compilado (generado por make build)
-    ├── inspect.py                  # Utilidad de depuración: tripUpdates.pb
-    ├── inspect_tu.py               # Utilidad de depuración: tripUpdates.pb (mejorada)
+    ├── inspect.py                  # Utilidad de depuración: muestra primeras entidades de tripUpdates.pb
+    ├── inspect_tu.py               # Utilidad de depuración: extrae trip_ids y stop_ids de tripUpdates.pb
     └── inspect_vp.py               # Utilidad de depuración: vehiclePositions.pb
 ```
 
@@ -68,13 +79,26 @@ Todos se ejecutan desde `pruebas-gtfs`:
 
 ## Fuentes de datos
 
+### Tuvisa — autobuses urbanos de Vitoria-Gasteiz
+
 | Recurso                     | URL                                                                                 |
 |-----------------------------|-------------------------------------------------------------------------------------|
 | GTFS estático               | `https://www.vitoria-gasteiz.org/we001/http/vgTransit/google_transit.zip`           |
 | Feed RT — trip updates      | `https://www.vitoria-gasteiz.org/we001/http/vgTransit/realTime/tripUpdates.pb`      |
 | Feed RT — vehicle positions | `https://www.vitoria-gasteiz.org/we001/http/vgTransit/realTime/vehiclePositions.pb` |
 
-El feed RT se actualiza con frecuencia (cada ~30 s). El GTFS estático cambia
+### Euskotren — tranvía EuskoTran de Vitoria-Gasteiz
+
+| Recurso                     | URL                                                                                              |
+|-----------------------------|--------------------------------------------------------------------------------------------------|
+| GTFS estático               | `https://opendata.euskadi.eus/transport/moveuskadi/euskotren/gtfs_euskotren.zip`                  |
+| Feed RT — trip updates      | `https://opendata.euskadi.eus/transport/moveuskadi/euskotren/gtfsrt_euskotren_trip_updates.pb`    |
+
+El GTFS de Euskotren incluye toda la red (tren, metro, tram), por lo que se filtra al operador
+`EUS_TrGa` (líneas TG1, TG2 y 41 del tranvía de Vitoria-Gasteiz). El feed RT de Euskotren
+sigue el estándar GTFS-RT sin las particularidades no estándar de Tuvisa.
+
+Los feeds RT se actualizan con frecuencia (cada ~30 s). Los ZIPs estáticos cambian
 con menor frecuencia (cambios de servicio estacionales).
 
 ---
@@ -265,6 +289,13 @@ strings UTF-8, sub-mensajes recursivos). Útil para verificar el mapeo de
 campos ante cambios en el feed.
 
 > ⚠️ La ruta del fichero está hardcodeada; editar la línea `data = open(...)` si es necesario.
+
+### `inspect_tu.py`
+
+`python3 TripUpdatesReader/inspect_tu.py` extrae los `trip_id` y `stop_id` de las primeras entidades
+del fichero `tripUpdates.pb`, útil para verificar qué viajes y paradas lleva el feed en ese momento.
+
+> ⚠️ La ruta del fichero está hardcodeada relativa al script; apunta a `../tripUpdates.pb`.
 
 ### `inspect_vp.py`
 
