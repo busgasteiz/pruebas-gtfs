@@ -35,10 +35,12 @@ pruebas-gtfs
 │   └── attributions.txt
 ├── GTFS_Data.zip                   # ZIP descargado (no editar manualmente)
 ├── tripUpdates.pb                  # Feed RT binario (generado por download_data.sh)
+├── vehiclePositions.pb             # Feed RT de posiciones GPS (generado por download_data.sh)
 └── TripUpdatesReader/
     ├── main.swift                  # Programa principal (único fichero fuente)
     ├── tripUpdatesReader           # Binario compilado (generado por make build)
-    └── inspect.py                  # Utilidad de depuración del wire format protobuf
+    ├── inspect.py                  # Utilidad de depuración: tripUpdates.pb
+    └── inspect_vp.py               # Utilidad de depuración: vehiclePositions.pb
 ```
 
 ---
@@ -117,6 +119,8 @@ Carga secuencial: GTFS estático → feed RT → impresión enriquecida por enti
 
 ## ⚠️ Particularidades del feed (no estándar)
 
+### `TripUpdate` — campo `TripUpdate`
+
 El feed de Tuvisa **no sigue el campo estándar de GTFS-RT** para `TripUpdate`:
 
 | Campo protobuf | Estándar GTFS-RT            | **Este feed**               |
@@ -129,6 +133,54 @@ Esto está corregido en `parseTripUpdate` con un comentario explicativo.
 Además, `StopTimeEvent` sólo incluye `delay` (field 1); el campo `time`
 (field 2, timestamp absoluto) **no se emite**; la hora predicha se calcula
 como `scheduled_time + delay`.
+
+### `VehiclePosition` — feed `vehiclePositions.pb`
+
+El feed contiene **~67 entidades** (vehículos en circulación en el momento
+de la descarga). Los campos dentro del sub-mensaje `VehiclePosition`
+(field 4 de `FeedEntity`) también están **desplazados** respecto al estándar:
+
+| Campo protobuf | Estándar GTFS-RT       | **Este feed**            |
+|----------------|------------------------|--------------------------|
+| field 2        | `VehicleDescriptor`    | `Position` (GPS)         |
+| field 3        | `Position`             | `current_stop_sequence`  |
+| field 5        | `stop_id`              | `timestamp`              |
+| field 6        | `current_status`       | _(no emitido)_           |
+| field 7        | `timestamp`            | `stop_id`                |
+| field 8        | `congestion_level`     | `VehicleDescriptor`      |
+
+#### Campos del sub-mensaje `TripDescriptor` (field 1 — igual al estándar)
+
+| Campo   | Contenido                                  | Ejemplo            |
+|---------|--------------------------------------------|--------------------|
+| field 1 | `trip_id`                                  | `'L1S2_026-LAB'`   |
+| field 4 | `schedule_relationship` (0 = SCHEDULED)    | `0`                |
+| field 5 | `route_id` (número de línea)               | `'1'`, `'10'`, `'B'` |
+
+#### Campos del sub-mensaje `Position` (field 2 en este feed, estándar field 3)
+
+| Campo   | Tipo     | Contenido                        | Ejemplo      |
+|---------|----------|----------------------------------|--------------|
+| field 1 | float32  | Latitud                          | `42.857887`  |
+| field 2 | float32  | Longitud                         | `-2.681148`  |
+| field 4 | double64 | Odómetro en metros (opcional)    | `254218960`  |
+| field 5 | float32  | Velocidad en m/s (opcional)      | `8.33` (~30 km/h) |
+
+> El campo `bearing` (field 3, estándar) **no se emite** en este feed.
+
+#### Campos del sub-mensaje `VehicleDescriptor` (field 8 en este feed, estándar field 2)
+
+| Campo   | Contenido                        | Ejemplo          |
+|---------|----------------------------------|------------------|
+| field 1 | ID interno del vehículo          | `'v-025e81ab'`   |
+| field 2 | Número de flota visible al viajero | `'138'`, `'53'` |
+
+#### Valores de `current_status` (field 4 en este feed, estándar field 6)
+
+| Valor | Significado   |
+|-------|---------------|
+| `0`   | `INCOMING_AT` |
+| `2`   | `IN_TRANSIT_TO` |
 
 ---
 
@@ -146,7 +198,9 @@ como `scheduled_time + delay`.
 
 ---
 
-## Utilidad de depuración (`inspect.py`)
+## Utilidades de depuración
+
+### `inspect.py`
 
 `python3 TripUpdatesReader/inspect.py` imprime la estructura completa de las
 dos primeras `FeedEntity` del fichero `tripUpdates.pb` en formato jerárquico,
@@ -154,10 +208,21 @@ mostrando número de campo, wire type y valor (varint como signed/unsigned,
 strings UTF-8, sub-mensajes recursivos). Útil para verificar el mapeo de
 campos ante cambios en el feed.
 
----
+> ⚠️ La ruta del fichero está hardcodeada; editar la línea `data = open(...)` si es necesario.
 
-## Zona horaria
+### `inspect_vp.py`
 
-Toda la lógica de tiempo usa `Europe/Madrid` (configurada en `agency.txt`).
-En verano (abril) corresponde a **CEST = UTC+2**.
+`python3 TripUpdatesReader/inspect_vp.py [N]` imprime las primeras **N**
+`FeedEntity` (por defecto 3) del fichero `vehiclePositions.pb`, en el mismo
+formato jerárquico. Al final indica el total de entidades en el feed.
 
+```bash
+# Ver las 5 primeras entidades
+python3 TripUpdatesReader/inspect_vp.py 5
+
+# Ver todas las entidades
+python3 TripUpdatesReader/inspect_vp.py 67
+```
+
+La ruta del fichero se resuelve automáticamente como `../vehiclePositions.pb`
+relativo al script, sin necesidad de edición manual.
